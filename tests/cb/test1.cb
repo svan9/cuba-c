@@ -1,0 +1,64 @@
+[!#joke]
+yas std;
+
+entry main();
+
+[!#gen]
+xat list {
+  "count of elements (unsigned integer)";
+  `iew size;
+
+  "start pointer";
+  $ address;
+};
+
+[!#flags_support, !#bii]
+xat tom {
+  list arguments;
+  block inner;
+
+  "translate root object prems";
+  self~inner;
+};
+
+
+iew main() {
+  iew x1 = 10; 
+  iew x2 = 15; 
+  
+  "condition";
+  iiow (x1 >= x2) {
+
+  }
+  "if not touched"; 
+  edie {
+    
+  } 
+  "if touched";
+  iiod {
+
+  }
+};
+
+xat foo {
+  [!#festo]
+  tom create;
+};
+
+tom foo::create() {
+  late tom so_tom = tom::new() {};
+  printout BUFFER;
+  writefile BUFFER;
+  BUFFER buf = readfile PATHLIKE;
+  "BUFFER == string";
+
+  BUFFER buf = b256x12x32x55;
+
+  buf::at 10;
+  buf::atc 10 50;
+
+  execute buf;
+
+  end;
+};
+
