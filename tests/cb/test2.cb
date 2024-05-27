@@ -4,39 +4,71 @@ yas std;
 entry main();
 
 [!#gen]
-xat list<T> {
+xat list {
   "count of elements (unsigned integer)";
   `iew size;
-
-  "size of element";
-  `iew size_t = sizeof(T);
   
   "start pointer";
   $ address;
 
   on {
     [`iew i] -> {
-      rnd ((self.address*self->size_t)/10);
+      late iew a = 10;
+      
+      req (self.address::slice i, i+1);
+      
+      end;
     };
   };
 };
 
 [!#flags_support, !#bii]
 xat tom {
-  list<$> arguments;
+  Array arguments;
   block inner;
 
-  "translate root object prems";
+  "Translate Root Object Prems";
   self~inner;
   
   on {
-    () -> {
-      rnd (self::call);
+    () (Array a) -> {
+      late $ o = (1, 2)~(iew a, iew b);
+      a~self.arguments;
+      poka (i < arguments) {
+        self.arguments[i]~self.inner,
+      }
+      self.inner::call~self.return;
+      rnd self.return;
+    };
+  
+    == (tom unself) -> {
+      rnd (self.arguments == unself.arguments)&&(sizeof self.inner == sizeof unself.inner);
     };
   };
-  
 };
 
+tom foo::create (iew a, iew b) {
+  late tom so_tom = tom::new () {};
+  self.arguments[10];
+
+  printout BUFFER;
+  writefile BUFFER;
+  BUFFER buf = readfile PATHLIKE;
+  "Buffer == string";
+
+  BUFFER buf;
+  BUFFER nbuf = execute buf;
+
+  iew a = 10;
+  self.arguments[0];
+
+  foo::create(10, b);
+};
+
+xat foo {
+  [!#festo] 
+  tom create;
+};
 
 iew main() {
   iew x1 = 10; 
@@ -46,30 +78,13 @@ iew main() {
   iiow (x1 >= x2) {
 
   }
+
   "if not touched"; 
   edie {
     
-  } 
+  }
   "if touched";
   iiod {
 
   }
 };
-
-xat foo {
-  [!#festo]
-  tom create;
-};
-
-tom foo::create() {
-  late tom so_tom = tom::new() {};
-  printout BUFFER;
-  writefile BUFFER;
-  BUFFER buf = readfile PATHLIKE;
-  "BUFFER == string";
-
-  BUFFER buf;
-  BUFFER nbuf = execute buf;
-  end;
-};
-

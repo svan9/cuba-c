@@ -18,11 +18,12 @@ xat tom {
   block inner;
 
   "translate root object prems";
+
   self~inner;
 };
 
 
-iew main() {
+iew main = {
   iew x1 = 10; 
   iew x2 = 15; 
   
@@ -43,22 +44,28 @@ iew main() {
 xat foo {
   [!#festo]
   tom create;
+
+};
+tom readfile(lina path) {
+  BUFFER buf = path::stob;
+  execute buf;
 };
 
 tom foo::create() {
   late tom so_tom = tom::new() {};
+  "BUFFER == string";
   printout BUFFER;
   writefile BUFFER;
   BUFFER buf = readfile PATHLIKE;
-  "BUFFER == string";
 
-  BUFFER buf = b256x12x32x55;
+  BUFFER buf = b97x97x97x10;
 
   buf::at 10;
   buf::atc 10 50;
+  execute buf; // comment 
 
-  execute buf;
-
+  ***
+    comment
+  *** 
   end;
 };
-
