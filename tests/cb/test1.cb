@@ -59,17 +59,21 @@ iew main = {
 xat foo {
   [!#festo]
   tom create;
-
 };
+
 tom readfile(lina path) {
   BUFFER buf = path::stob;
   execute buf;
 };
 
+macro print(a) printout #a;
+
 tom foo::create() {
   late tom so_tom = tom::new() {};
   "BUFFER == string";
   printout BUFFER;
+  print(a);
+  
   writefile BUFFER;
   BUFFER buf = readfile PATHLIKE;
 

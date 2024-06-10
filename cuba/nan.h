@@ -1051,33 +1051,62 @@ void NanJitMemoryFree(NanJitMemory* self, NanRange* range) {
   NAN_PANIC_CODE("range of code undefined");
 }
 
+typedef enum {
+  NA_PRINT,
+  NA_INPUT  
+} NanJitActionKind;
+
 typedef struct {
-  NanDynamicArray event_row;
-  NanDynamicArray associations;
-  NanDescryptor descryptor;	
-  NanJitMemory memory_observer;
+  NanJitActionKind kind;
+  NanString content;
+} NanJitToken;
+
+typedef struct {
+  // NanDescryptor descryptor;	
+  NanDynamicArray tokens;
+  NanJitMemory memory_observer;  
 } NanJit;
 
-void NanJitAddEvent(NanJit* self, const char* name, NanEventCallback callback) {
-  NanEventRowElement* ev = malloc(sizeof(NanEventRowElement));
-  ev->callback = callback;
-  ev->name = NanStringFromStr(name);
-  NanDynamicArrayPush(&self->event_row, ev);
-}
+// void NanJitAddEvent(NanJit* self, const char* name, NanEventCallback callback) {
+//   NanEventRowElement* ev = malloc(sizeof(NanEventRowElement));
+//   ev->callback = callback;
+//   ev->name = NanStringFromStr(name);
+//   NanDynamicArrayPush(&self->event_row, ev);
+// }
 
-void NanJitAddAssotiation(NanJit* self, const char* name, int value) {
-  NanTypeAssociation* a__ = malloc(sizeof(NanTypeAssociation));
-  a__->name = NanStringFromStr(name);
-  a__->value = value;
-  NanDynamicArrayPush(&self->associations, a__);
-}
+// void NanJitAddAssotiation(NanJit* self, const char* name, int value) {
+//   NanTypeAssociation* a__ = malloc(sizeof(NanTypeAssociation));
+//   a__->name = NanStringFromStr(name);
+//   a__->value = value;
+//   NanDynamicArrayPush(&self->associations, a__);
+// }
 
 NanJit NanJitCreate() {
   NanJit __j = {
-    .associations = NanDynamicArrayCreate(sizeof(NanTypeAssociation)),
-    .event_row = NanDynamicArrayCreate(sizeof(NanEventRowElement))
+    // .associations = NanDynamicArrayCreate(sizeof(NanTypeAssociation)),
+    .tokens = NanDynamicArrayCreate(sizeof(NanJitToken))
+    // .event_row = NanDynamicArrayCreate(sizeof(NanEventRowElement))
   };	
   return __j;
+}
+
+void NanJitAppend(NanJit* self, NanJitActionKind kind) {
+  NanJitToken* tk = malloc(sizeof(NanJitToken));
+  tk->content = NanStringNull;
+  tk->kind = kind; 
+  NanDynamicArrayPush(&self->tokens, tk);
+}
+void NanJitAppendNS(NanJit* self, NanJitActionKind kind, NanString value) {  
+  NanJitToken* tk = malloc(sizeof(NanJitToken));
+  tk->content = value;
+  tk->kind = kind;
+  NanDynamicArrayPush(&self->tokens, tk);
+}
+void NanJitAppendCS(NanJit* self, NanJitActionKind kind, const char* value) {
+  NanJitToken* tk = malloc(sizeof(NanJitToken));
+  tk->content = NanStringFromStr(value);
+  tk->kind = kind;
+  NanDynamicArrayPush(&self->tokens, tk);  
 }
 
 static void NanJitCall(NanStringBuilder* builder, int dist) {
@@ -1200,6 +1229,27 @@ static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
     NanStringBuilderPushStr(builder,  "\x0f\x05"                      , 2); // syscall
   }
 }
+
+
+void NanJitRun(NanJit* self) {  
+	NanStringBuilder builder = NanStringBuilderCreate(5);
+  for (int i = 0; i < self->tokens.size; i++) {
+    NanJitToken* tk = NanDynamicArrayAt(&self->tokens, i);
+    switch (tk->kind) {
+      case NA_PRINT: {
+        if (NanStringMatch(&tk->content, &NanStringNull)) {
+          NAN_PANIC_CODE("NA_PRINT must have `.content`");
+        } 
+        NanJitExtPutString(&builder, tk->content.content);
+      } break;
+    };
+  }
+	NanJitEOP(&builder);
+	// DEBUG NanStringBuilderPrintX(&builder);
+	NanExec exec = NanStringBuilderToExec(&builder);
+	NanExecRun(&exec);
+}
+
 
 #ifdef __cplusplus
 }

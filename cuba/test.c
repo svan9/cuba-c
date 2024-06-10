@@ -1,11 +1,8 @@
 #include "nan.h"
 
 int main() {
-	NanStringBuilder builder = NanStringBuilderCreate(5);
-	NanJitExtPutString(&builder, "hellow, world");
-	NanJitEOP(&builder);
-	// NanStringBuilderPrintX(&builder);
-	NanExec exec = NanStringBuilderToExec(&builder);
-	NanExecRun(&exec);
+	NanJit jit = NanJitCreate();
+	NanJitAppendCS(&jit, NA_PRINT, "hellow, word\n");
+	NanJitRun(&jit);
 	return 0;
 }
