@@ -134,7 +134,7 @@ void NanDynamicArrayPush(NanDynamicArray* self, void* element) {
   if (_new_size > self->capacity) {
     NanDynamicArrayRealloc(self, _new_size);
   }
-  memcpy(self->begin+(self->size*self->T_size), element, sizeof(element));
+  memcpy(self->begin+(self->size*self->T_size), element, self->T_size);
   self->size++;
 }
 
@@ -260,7 +260,7 @@ NanString NanStringFromChar(char c) {
   str.content[0] = c;
   return str;
 }
-NanString NanStringFromStr(const char* s) {
+NanString NanStringFromStr(char* s) {
   NanString str = {
     .size = strlen(s),
     .content = NULL
@@ -269,6 +269,22 @@ NanString NanStringFromStr(const char* s) {
   if (str.content == NULL) { SNAN_PANIC_CODE("can't allocate memory"); }
   memcpy(str.content, s, str.size);
   return str;
+}
+NanString NanStringFromS(char* s, size_t size) {
+  NanString str = {
+    .size = size,
+    .content = NULL
+  };
+  str.content = malloc(size);
+  if (str.content == NULL) { SNAN_PANIC_CODE("can't allocate memory"); }
+  memcpy(str.content, s, size);
+  return str;
+}
+
+void NanStringPrint(NanString* self) {
+  for (int i = 0; i < self->size; i++) {
+    putchar(self->content[i]);
+  }
 }
 
 bool NanStringStartWithC(NanString* self, char c){
@@ -935,7 +951,7 @@ NanDynamicArray NanEventRowCreate() {
   return arr;
 }
 
-NanEventRowElement* NanEventRowFindOne(NanDynamicArray* self, const char* name) {
+NanEventRowElement* NanEventRowFindOne(NanDynamicArray* self, char* name) {
   NanString __name = NanStringFromStr(name);
   for (int i = 0; i < self->size; i++) {
     NanEventRowElement* el = NanDynamicArrayAt(self, i);
@@ -945,7 +961,7 @@ NanEventRowElement* NanEventRowFindOne(NanDynamicArray* self, const char* name) 
   }
 } 
 
-NanDynamicArray NanEventRowFindAll(NanDynamicArray* self, const char* name) {
+NanDynamicArray NanEventRowFindAll(NanDynamicArray* self, char* name) {
   NanString __name = NanStringFromStr(name);
   NanDynamicArray matched = NanDynamicArrayCreate(sizeof(NanEventRowElement));
   for (int i = 0; i < self->size; i++) {
@@ -964,7 +980,7 @@ void NanEventRowRun(NanDynamicArray* self, void* ev) {
   }
 }
 
-void NanEventRowRunNamed(NanDynamicArray* self, const char* name, void* ev) {
+void NanEventRowRunNamed(NanDynamicArray* self, char* name, void* ev) {
   NanDynamicArray __finded = NanEventRowFindAll(self, name);
   for (int i = 0; i < __finded.size; i++) {
     NanEventRowElement* el = NanDynamicArrayAt(&__finded, i);
@@ -1100,7 +1116,8 @@ typedef struct {
 NanJit NanJitCreate() {
   NanJit __j = {
     // .associations = NanDynamicArrayCreate(sizeof(NanTypeAssociation)),
-    .tokens = NanDynamicArrayCreate(sizeof(NanJitToken))
+    .tokens = NanDynamicArrayCreate(sizeof(NanJitToken)),
+    .memory_observer = NanJitMemoryCreate()
     // .event_row = NanDynamicArrayCreate(sizeof(NanEventRowElement))
   };	
   return __j;
@@ -1118,7 +1135,7 @@ void NanJitAppendNS(NanJit* self, NanJitActionKind kind, NanString value) {
   tk->kind = kind;
   NanDynamicArrayPush(&self->tokens, tk);
 }
-void NanJitAppendCS(NanJit* self, NanJitActionKind kind, const char* value) {
+void NanJitAppendCS(NanJit* self, NanJitActionKind kind, char* value) {
   NanJitToken* tk = malloc(sizeof(NanJitToken));
   tk->content = NanStringFromStr(value);
   tk->kind = kind;
@@ -1247,6 +1264,7 @@ static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
   }
 #elif _WIN32
   NAN_WARN_CODE("win in dev");
+  printf("\npreudo: %s", text);
 #endif
 }
 
@@ -1258,7 +1276,7 @@ void NanJitRun(NanJit* self) {
       case NA_PRINT: {
         if (NanStringIsNull(&tk->content)) {
           NAN_PANIC_CODE("NA_PRINT must have `.content`");
-        } 
+        }
         NanJitExtPutString(&builder, tk->content.content);
       } break;
     };
