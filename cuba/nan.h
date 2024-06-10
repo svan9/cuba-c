@@ -108,7 +108,7 @@ void NanDynamicArrayRealloc(NanDynamicArray* self, size_t newSize) {
   self->begin = realloc(self->begin, _aligned_size);
 
   if (self->begin == NULL) {
-    ANAN_PANIC_CODE("can't allocate");
+    SNAN_PANIC_CODE("can't allocate");
   }
 }
 
@@ -124,7 +124,7 @@ NanDynamicArray NanDynamicArrayCreate(size_t element_size) {
   };
   self.begin = malloc(NanDynamicArrayAlignment*element_size);
   if (self.begin == NULL) {
-    ANAN_PANIC_CODE("can't allocate");
+    SNAN_PANIC_CODE("can't allocate");
   }
   return self;
 }
@@ -266,6 +266,7 @@ NanString NanStringFromStr(const char* s) {
     .content = NULL
   };
   str.content = malloc(str.size);
+  if (str.content == NULL) { SNAN_PANIC_CODE("can't allocate memory"); }
   memcpy(str.content, s, str.size);
   return str;
 }
@@ -314,7 +315,7 @@ NanStringBuilder NanStringBuilderCreate(size_t alignment) {
   self.begin = malloc(alignment*sizeof(char));
 
   if (self.begin == NULL) {
-    ANAN_PANIC_CODE("can't allocate");
+    SNAN_PANIC_CODE("can't allocate");
   }
 
   return self;
@@ -340,7 +341,7 @@ void NanStringBuilderRealloc(NanStringBuilder* self, size_t newSize) {
   self->begin = realloc(self->begin, _aligned_size);
 
   if (self->begin == NULL) {
-    ANAN_PANIC_CODE("can't allocate");
+    SNAN_PANIC_CODE("can't allocate");
   }
 }
 
