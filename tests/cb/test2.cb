@@ -1,29 +1,4 @@
-[!#joke]
-yas std;
-
-entry main();
-
-[!#gen]
-xat list {
-  "count of elements (unsigned integer)";
-  `iew size;
-  
-  "start pointer";
-  $ address;
-
-  on {
-    [`iew i] -> {
-      late iew a = 10;
-      
-      req (self.address::slice i, i+1);
-      
-      end;
-    };
-  };
-};
-
-[!#flags_support, !#bii]
-xat tom {
+struct func {
   Array arguments;
   block inner;
 
@@ -31,8 +6,8 @@ xat tom {
   self~inner;
   
   on {
-    () (Array a) -> {
-      late $ o = (1, 2)~(iew a, iew b);
+    #array (Array a) -> {
+      late $ o = (1, 2)~(int a, int b);
       a~self.arguments;
       poka (i < arguments) {
         self.arguments[i]~self.inner,
@@ -41,50 +16,23 @@ xat tom {
       rnd self.return;
     };
   
-    == (tom unself) -> {
-      rnd (self.arguments == unself.arguments)&&(sizeof self.inner == sizeof unself.inner);
-    };
   };
 };
 
-tom foo::create (iew a, iew b) {
-  late tom so_tom = tom::new () {};
-  self.arguments[10];
+entry {
+  int x1 = 10; 
+  int x2 = 15; 
 
-  printout BUFFER;
-  writefile BUFFER;
-  BUFFER buf = readfile PATHLIKE;
-  "Buffer == string";
-
-  BUFFER buf;
-  BUFFER nbuf = execute buf;
-
-  iew a = 10;
-  self.arguments[0];
-
-  foo::create(10, b);
-};
-
-xat foo {
-  [!#festo] 
-  tom create;
-};
-
-iew main() {
-  iew x1 = 10; 
-  iew x2 = 15; 
-  
-  "condition";
-  iiow (x1 >= x2) {
+  if (x1 >= x2) {
 
   }
-
-  "if not touched"; 
-  edie {
+  else if(x1 == x2) {
     
   }
-  "if touched";
-  iiod {
+  else {
+    
+  }
+  finally {
 
   }
 };

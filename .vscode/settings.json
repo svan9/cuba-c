@@ -1,0 +1,14 @@
+{
+	"files.associations": {
+		"*.env": "properties",
+		"string.h": "c",
+		"mman.h": "c",
+		"windows.h": "c",
+		"cuba.h": "c",
+		"stdio.h": "c",
+		"types.h": "c",
+		"nan.h": "c",
+		"dictionary.h": "c"
+	},
+	"C_Cpp.dimInactiveRegions": false
+}

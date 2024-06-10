@@ -18,12 +18,3 @@ char *trim(char *s) {
 	return rtrim(ltrim(s));
 }
 
-// void* execute(char code[]) {
-// 	void* buf;
-// 	buf = mmap(0,sizeof(code),PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON,-1,0);
-
-// 	memcpy (buf, code, sizeof(code));
-	
-// 	((void(*)(void))buf)();
-// 	return buf;
-// }

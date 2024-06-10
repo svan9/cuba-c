@@ -39,6 +39,21 @@ iew main = {
   iiod {
 
   }
+
+  // #1 
+  if (x1 >= x2) {
+    
+  }
+  // #2 
+  else if (x1 == x2) {
+
+  }
+  finally {
+
+  }
+  else {
+
+  }
 };
 
 xat foo {
@@ -59,13 +74,13 @@ tom foo::create() {
   BUFFER buf = readfile PATHLIKE;
 
   BUFFER buf = b97x97x97x10;
+  execute buf; // comment 
+
 
   buf::at 10;
   buf::atc 10 50;
-  execute buf; // comment 
-
   ***
     comment
-  *** 
+  ***
   end;
 };

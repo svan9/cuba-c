@@ -1,194 +1,188 @@
 #include "cuba.h"
 
-void tok_skip(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
+
+//$ ---- TOKENIZING ---- 
+
+// skip white spaces
+void tok_skip(CubaLexer* lexer, NanStringIterator* it) {
 	while (it->cursor < it->size) {
-		if (!IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), TTK_SKIP)) { break; } 
-		CUBA_SIT_NEXT(it);
+		if (!isCharInString(TTK_SKIP, CUBA_SIT_GETCH(it))) { break; } 
+		NanStringIteratorGetNext(it);
 	}
 	
 	// CUBA_SIT_CPRINT(it);
 }
 
-void tok_scmm(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_STRING_BUILDER builder;
-	CUBA_STRING_BUILDER_INIT(&builder, 5);
-	CUBA_SIT_NEXT(it); CUBA_SIT_NEXT(it);
+// catch single line comments
+void tok_scmm(CubaLexer* lexer, NanStringIterator* it) {
+	NanStringBuilder builder = NanStringBuilderCreate(&builder);
+	NanStringIteratorGetNext(it); NanStringIteratorGetNext(it);
 	while (it->cursor < it->size) {
-		if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), "\n\r")) { CUBA_SIT_NEXT(it); break; } 
-		else { CUBA_STRING_BUILDER_PUSHIT(&builder, it); }
-		CUBA_SIT_NEXT(it);
+		if (isCharInString("\n\r", CUBA_SIT_GETCH(it))) { NanStringIteratorGetNext(it); break; } 
+		else { NanStringBuilder_PUSHIT(&builder, it); }
+		NanStringIteratorGetNext(it);
 	}
-	CUBA_STRING content;
-	CUBA_STRING_BUILD_FINALIZE(&builder, &content);
-	CUBA_TOKEN tk = {
+	NanString content = NanStringBuilderFinalize(&builder);
+	CubaToken tk = {
 		.kind = TK_SINGLECMM,
-		.value = content
+		.content = content
 	};
-	CUBA_LEXER_APPEND_TOKEN(lexer, tk);
-	
-	// while (it->cursor < it->size) {
-	// 	if (!IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), "\n")) { break; } 
-	// 	CUBA_SIT_NEXT(it);
-	// }
+	CubaLexerAppendToken(lexer, &tk);
 }
 
-void tok_mcmm(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_STRING_BUILDER builder;
-	CUBA_STRING_BUILDER_INIT(&builder, 5);
-	CUBA_SIT_NEXT(it); CUBA_SIT_NEXT(it); CUBA_SIT_NEXT(it);
+// catch multi line comments
+void tok_mcmm(CubaLexer* lexer, NanStringIterator* it) {
+	NanStringBuilder builder = NanStringBuilderCreate(&builder);
+	NanStringIteratorGetNext(it); NanStringIteratorGetNext(it); NanStringIteratorGetNext(it);
 	while (it->cursor < it->size) {
 		if (
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(it, 0), TTK_MULTICMM) &&
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(it, 1), TTK_MULTICMM) &&
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(it, 2), TTK_MULTICMM)
-		) { CUBA_SIT_NEXT(it); break; } 
-		else { CUBA_STRING_BUILDER_PUSHIT(&builder, it); }
-		CUBA_SIT_NEXT(it);
+			isCharInString(TTK_MULTICMM, NanStringIteratorGetNexts(it, 0)) &&
+			isCharInString(TTK_MULTICMM, NanStringIteratorGetNexts(it, 1)) &&
+			isCharInString(TTK_MULTICMM, NanStringIteratorGetNexts(it, 2))
+		) { NanStringIteratorGetNext(it); break; } 
+		else { NanStringBuilder_PUSHIT(&builder, it); }
+		NanStringIteratorGetNext(it);
 	}
-	CUBA_STRING content;
-	CUBA_STRING_BUILD_FINALIZE(&builder, &content);
-	CUBA_TOKEN tk = {
+	NanString content = NanStringBuilderFinalize(&builder);
+	CubaToken tk = {
 		.kind = TK_MULTICMM,
-		.value = content
+		.content = content
 	};
-	CUBA_LEXER_APPEND_TOKEN(lexer, tk);
-	
-	// while (it->cursor < it->size) {
-	// 	if (!IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), "\n")) { break; } 
-	// 	CUBA_SIT_NEXT(it);
-	// }
+	CubaLexerAppendToken(lexer, &tk);
 }
 
-void tok_string(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_STRING_BUILDER builder;
-	CUBA_STRING_BUILDER_INIT(&builder, 5);
-	CUBA_SIT_NEXT(it);
+// catch ("string")
+void tok_string(CubaLexer* lexer, NanStringIterator* it) {
+	NanStringBuilder builder = NanStringBuilderCreate(&builder);
+	NanStringIteratorGetNext(it);
 	while (it->cursor < it->size) {
 		if (
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), TTK_QUOTE) &&
-			CUBA_SIT_GETCHS(it, -1) != TTK_ESC
-		) { CUBA_SIT_NEXT(it); break; } 
-		else { CUBA_STRING_BUILDER_PUSHIT(&builder, it); }
-		CUBA_SIT_NEXT(it);
+			isCharInString(CUBA_SIT_GETCH(it), TTK_QUOTE) &&
+			NanStringIteratorGetNexts(it, -1) != TTK_ESC
+		) { NanStringIteratorGetNext(it); break; } 
+		else { NanStringBuilder_PUSHIT(&builder, it); }
+		NanStringIteratorGetNext(it);
 	}
-	CUBA_STRING content;
-	CUBA_STRING_BUILD_FINALIZE(&builder, &content);
-	CUBA_TOKEN tk = {
+	NanString content = NanStringBuilderFinalize(&builder);
+	CubaToken tk = {
 		.kind = TK_STRING,
-		.value = content
+		.content = content
 	};
-	CUBA_LEXER_APPEND_TOKEN(lexer, tk);
+	CubaLexerAppendToken(lexer, &tk);
 }
 
-void tok_special(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_LEXER_APPEND_TOKEN(lexer, CUBA_TOKEN_INIT(TK_SPECIAL, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it))));
+// catch any symbols
+void tok_special(CubaLexer* lexer, NanStringIterator* it) {
+	CubaLexerAppendToken(lexer, CubaTokenCreate(TK_SPECIAL, NanStringFromChar(NanStringIteratorNext(it))));
 }
 
-void tok_number(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_STRING_BUILDER builder;
-	CUBA_STRING_BUILDER_INIT(&builder, 5);
+// catch number (fully only integer)
+void tok_number(CubaLexer* lexer, NanStringIterator* it) {
+	NanStringBuilder builder = NanStringBuilderCreate(&builder);
 	while (it->cursor < it->size) {
-		if (!IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), TTK_NUMBER)) { break; } 
-		else { CUBA_STRING_BUILDER_PUSHIT(&builder, it); }
-		CUBA_SIT_NEXT(it);
+		if (!isCharInString(CUBA_SIT_GETCH(it), TTK_NUMBER)) { break; } 
+		else { NanStringBuilder_PUSHIT(&builder, it); }
+		NanStringIteratorGetNext(it);
 	}
-	CUBA_STRING content;
-	CUBA_STRING_BUILD_FINALIZE(&builder, &content);
-	CUBA_TOKEN tk = {
+	NanString content = NanStringBuilderFinalize(&builder);
+	CubaToken tk = {
 		.kind = TK_NUMBER,
-		.value = content
+		.content = content
 	};
-	CUBA_LEXER_APPEND_TOKEN(lexer, tk);
+	CubaLexerAppendToken(lexer, &tk);
 }
 
-void tok_text(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_STRING_BUILDER builder;
-	CUBA_STRING_BUILDER_INIT(&builder, 5);
+// catch any text
+void tok_text(CubaLexer* lexer, NanStringIterator* it) {
+	NanStringBuilder builder = NanStringBuilderCreate(&builder);
 	while (it->cursor < it->size) {
-		if ( CUBA_SIT_GETCH(it) < 0 || !(IS_CHAR_IN_STRING(CUBA_SIT_GETCH(it), TTK_FTEXTSP))) { break; } 
-		else { CUBA_STRING_BUILDER_PUSHIT(&builder, it); }
-		CUBA_SIT_NEXT(it);
+		if ( CUBA_SIT_GETCH(it) < 0 || !(isCharInString(CUBA_SIT_GETCH(it), TTK_FTEXTSP))) { break; } 
+		else { NanStringBuilder_PUSHIT(&builder, it); }
+		NanStringIteratorGetNext(it);
 	}
-	CUBA_STRING content;
-	CUBA_STRING_BUILD_FINALIZE(&builder, &content);
-	CUBA_TOKEN tk = {
+	NanString content = NanStringBuilderFinalize(&builder);
+	CubaToken tk = {
 		.kind = TK_TEXT,
-		.value = content
+		.content = content
 	};
-	CUBA_LEXER_APPEND_TOKEN(lexer, tk);
+	CubaLexerAppendToken(lexer, &tk);
 }
 
-void tok_openfig(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_OPENFIG, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_openfig(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_OPENFIG, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_closefig(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_CLOSEFIG, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_closefig(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_CLOSEFIG, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_opensqu(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_OPENSQU, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_opensqu(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_OPENSQU, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_closesqu(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_CLOSESQU, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_closesqu(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_CLOSESQU, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_opentri(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_OPENTRI, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_opentri(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_OPENTRI, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_closetri(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_CLOSETRI, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_closetri(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_CLOSETRI, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_openrou(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_OPENROU, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_openrou(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_OPENROU, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_closerou(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_CLOSEROU, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_closerou(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_CLOSEROU, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
-void tok_endline(CUBA_LEXER* lexer, CUBA_STRING_IT* it) {
-	CUBA_TOKEN token = CUBA_TOKEN_INIT(TK_ENDLINE, CUBA_STRING_FROM_CHAR(CUBA_SIT_GETCH_N(it)));
-	CUBA_LEXER_APPEND_TOKEN(lexer, token);
+// token brackets
+void tok_endline(CubaLexer* lexer, NanStringIterator* it) {
+	CubaToken* token = CubaTokenCreate(TK_ENDLINE, NanStringFromChar(CUBA_SIT_GETCH_N(it)));
+	CubaLexerAppendToken(lexer, token);
 }
 
 
-void tokenize(CUBA_STRING input, CUBA_LEXER* lexer) {
-	CUBA_STRING_IT it = CUBA_STRING_GETIT(&input);
-	CUBA_LEXER_INIT(lexer);
+//! bug string not catch '\0' (end of string) TK_TEXT ~ TK_<...>
+void tokenize(NanString input, CubaLexer* lexer) {
+	NanStringIterator it = NanStringIteratorFromString(&input); 
 
 	while (it.cursor < it.size) {
-		// if (CUBA_SIT_GETCH(&it) <= 0) {
-		// 	CUBA_SIT_NEXT(&it);
-		// }
-		// else 
 		if (
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_SINGLECMM) && 
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(&it, 1), TTK_SINGLECMM)
+			isCharInString(CUBA_SIT_GETCH(&it), TTK_SINGLECMM) && 
+			isCharInString(NanStringIteratorGetNexts(&it, 1), TTK_SINGLECMM)
 		) { tok_scmm(lexer, &it); } 
 		else if (
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(&it, 0), TTK_MULTICMM) &&
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(&it, 1), TTK_MULTICMM) &&
-			IS_CHAR_IN_STRING(CUBA_SIT_GETCHS(&it, 2), TTK_MULTICMM)
+			isCharInString(NanStringIteratorGetNexts(&it, 0), TTK_MULTICMM) &&
+			isCharInString(NanStringIteratorGetNexts(&it, 1), TTK_MULTICMM) &&
+			isCharInString(NanStringIteratorGetNexts(&it, 2), TTK_MULTICMM)
 		) { tok_mcmm(lexer, &it); }
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_SKIP))       { tok_skip(lexer, &it);      } //? string: (\S)   
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_QUOTE))      { tok_string(lexer, &it);    } //? string: (".*") 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_SPECIAL))    { tok_special(lexer, &it);   } //? special ([\!@|/-=+_*&^:;`#~.?,])
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_NUMBER))     { tok_number(lexer, &it);    } //? number ([0-9])
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_TEXT))       { tok_text(lexer, &it);      } //? text ([a-zA-Z][a-zA-Z0-9_])
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_OPENFIG))    { tok_openfig(lexer, &it);   } //? open fig (\{) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_CLOSEFIG))   { tok_closefig(lexer, &it);  } //? close fig (\}) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_OPENSQU))    { tok_opensqu(lexer, &it);   } //? open squ (\[) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_CLOSESQU))   { tok_closesqu(lexer, &it);  } //? close squ (\]) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_OPENTRI))    { tok_opentri(lexer, &it);   } //? open tri (\<) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_CLOSETRI))   { tok_closetri(lexer, &it);  } //? close tri (\>) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_OPENROU))    { tok_openrou(lexer, &it);   } //? open rou (\() 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_CLOSEROU))   { tok_closerou(lexer, &it);  } //? close rou (\)) 
-		else if (IS_CHAR_IN_STRING(CUBA_SIT_GETCH(&it), TTK_ENDLINE))    { tok_endline(lexer, &it);   } //? end line (;) 
-		else { CUBA_SIT_NEXT(&it); }
+		else if (isCharInString(TTK_SKIP, NanStringIteratorGetNext(&it)))       { tok_skip(lexer, &it);      } //? string: (\S)   
+		else if (isCharInString(TTK_QUOTE, NanStringIteratorGetNext(&it)))      { tok_string(lexer, &it);    } //? string: (".*") 
+		else if (isCharInString(TTK_SPECIAL, NanStringIteratorGetNext(&it)))    { tok_special(lexer, &it);   } //? special ([\!@|/-=+_*&^:;`#~.?,])
+		else if (isCharInString(TTK_NUMBER, NanStringIteratorGetNext(&it)))     { tok_number(lexer, &it);    } //? number ([0-9])
+		else if (isCharInString(TTK_TEXT, NanStringIteratorGetNext(&it)))       { tok_text(lexer, &it);      } //? text ([a-zA-Z][a-zA-Z0-9_])
+		else if (isCharInString(TTK_OPENFIG, NanStringIteratorGetNext(&it)))    { tok_openfig(lexer, &it);   } //? open fig (\{) 
+		else if (isCharInString(TTK_CLOSEFIG, NanStringIteratorGetNext(&it)))   { tok_closefig(lexer, &it);  } //? close fig (\}) 
+		else if (isCharInString(TTK_OPENSQU, NanStringIteratorGetNext(&it)))    { tok_opensqu(lexer, &it);   } //? open squ (\[) 
+		else if (isCharInString(TTK_CLOSESQU, NanStringIteratorGetNext(&it)))   { tok_closesqu(lexer, &it);  } //? close squ (\]) 
+		else if (isCharInString(TTK_OPENTRI, NanStringIteratorGetNext(&it)))    { tok_opentri(lexer, &it);   } //? open tri (\<) 
+		else if (isCharInString(TTK_CLOSETRI, NanStringIteratorGetNext(&it)))   { tok_closetri(lexer, &it);  } //? close tri (\>) 
+		else if (isCharInString(TTK_OPENROU, NanStringIteratorGetNext(&it)))    { tok_openrou(lexer, &it);   } //? open rou (\() 
+		else if (isCharInString(TTK_CLOSEROU, NanStringIteratorGetNext(&it)))   { tok_closerou(lexer, &it);  } //? close rou (\)) 
+		else if (isCharInString(TTK_ENDLINE, NanStringIteratorGetNext(&it)))    { tok_endline(lexer, &it);   } //? end line (;) 
+		else { NanStringIteratorNext(&it); }
 	}
-
 }

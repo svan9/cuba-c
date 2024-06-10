@@ -1,7 +1,7 @@
 #ifndef DICTIONARY_H
 #define DICTIONARY_H
 
-#define __USE_TURTLE_KW
+#define __USE_ENGL_KW
 
 //# number 
 #define NUMBER "1234567890"
@@ -117,5 +117,11 @@
 #define KW_EXECUTE			"execute"
 #define KW_PRINT  			"printout"
 #define KW_INPUT 				
+
+// // #define ASM_SP  0x00
+// // #define ASM_MOV 0x48
+// // #define ASM_NOP 0x01
+// // #define ASM_ADD 0xb5
+// // #define ASM_SUB 0xb6
 
 #endif

@@ -1,12 +1,14 @@
 #include <stdio.h>
+#include "nan.h"
 #include "cuba.h"
 #include "lexer.c"
+#include "parser.c"
 
 #define MAX_LINE_LENGTH 1000
-CUBA_STRING readfile(const char* path) {
+// read file by path
+NanString readfile(const char* path) {
 	// init builder
-	CUBA_STRING_BUILDER builder;
-	CUBA_STRING_BUILDER_INIT(&builder, 100);
+	NanStringBuilder builder = NanStringBuilderCreate(100);
 	// init file
 	FILE* ptr;
 	ptr = fopen(path, "rb"); 
@@ -23,20 +25,50 @@ CUBA_STRING readfile(const char* path) {
 	// close file
 	fclose(ptr);
 	// get string from string builder
-	CUBA_STRING str;
-	CUBA_STRING_INIT(&str, buffer, file_size);
-	// !!CUBA_STRING_BUILDER_PUSHC(&builder, buffer);
-	// CUBA_STRING_BUILDER_SPLICE(&builder, 0, -1);
-	// CUBA_STRING_BUILD_FINALIZE(&builder, str);
-	// return
+	NanString str;
+	NanString_INIT(&str, buffer, file_size);
+	free(buffer); free(ptr);
 	return str;
 }
 
-int main(int argc, char** argv) {
-	CUBA_STRING fcontent = readfile("E:/so2u/GITHUB/cuba/cuba-c/tests/cb/test1.cb");
-	CUBA_LEXER lexer;
-	tokenize(fcontent, &lexer);
-	printTokens(&lexer);
+// check is valid file path
+bool isFilePath(const char* path) {
+	return access(path, F_OK);
+}
 
+// compile program
+CubaLexer compileProgram(const char* path) {
+	// read file
+	NanString fcontent = readfile(path);
+	// allocate lexer
+	CubaLexer lexer = CubaLexerCreate();
+	// tokenize
+	tokenize(fcontent, &lexer);
+	// parse @CUBA_LEXER::elements
+	parse(&lexer);
+	// return lexer cast
+	return lexer;
+}
+
+/* // todo flags 
+*  [0] catch file path & compile file
+#  [1] -l --Lang <string>  (use keywords on spec lang [ENGL|TURT]) & default - TURT ?
+#  [2] -i --Interpret      (use interpreter)
+*/
+void parseArguments(int argc, char** argv) {
+	// ignore argv[0] (- is program name)
+	for (int i = 1; i < argc; i++) {
+		// [0] 
+		if (isFilePath(argv[i])) { compileProgram(argv[i]); }
+		
+	}
+}
+
+
+// after label `_start`
+int main(int argc, char** argv) {
+	// parse program arguments
+	parseArguments(argc, argv);	
+	// standart exit of program
 	return 0;
 }

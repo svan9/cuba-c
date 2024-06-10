@@ -126,6 +126,16 @@ void* mmap(void *addr, size_t len, int prot, int flags, int fildes, off_t off)
     return map;
 }
 
+// void* execute(char code[]) {
+// 	void* buf;
+// 	buf = mmap(0,sizeof(code),PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANON,-1,0);
+
+// 	memcpy (buf, code, sizeof(code));
+	
+// 	((void(*)(void))buf)();
+// 	return buf;
+// }
+
 int munmap(void *addr, size_t len)
 {
     if (UnmapViewOfFile(addr))
