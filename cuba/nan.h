@@ -1229,7 +1229,7 @@ static void NanJitOutputChar(NanStringBuilder* builder) {
     "\x89\xe1" 	                    // mov  ecx, esp
     "\xbb\x01\x00\x00\x00" 					// mov  ebx, 0x1
     "\xb8\x04\x00\x00\x00" 	        // mov  eax, 0x4
-    "\x0f\x05 " 	                  // syscall
+    "\x0f\x05" 	                    // syscall
   );
 #endif 
 }
@@ -1271,7 +1271,9 @@ static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
 #endif
 }
 
-void NanJitRun(NanJit* self) {  
+#define NAN_DEBUG if(is_debug) 
+
+void NanJitRun_RAW(NanJit* self, bool is_debug) {  
 	NanStringBuilder builder = NanStringBuilderCreate(5);
   for (int i = 0; i < self->tokens.size; i++) {
     NanJitToken* tk = NanDynamicArrayAt(&self->tokens, i);
@@ -1285,9 +1287,16 @@ void NanJitRun(NanJit* self) {
     };
   }
 	NanJitEOP(&builder);
-	// DEBUG NanStringBuilderPrintX(&builder);
+  NAN_DEBUG NanStringBuilderPrintX(&builder);
 	NanExec exec = NanStringBuilderToExec(&builder);
 	NanExecRun(&exec);
+}
+
+static void NanJitRun(NanJit* self) {
+  NanJitRun_RAW(self, false);
+}
+static void NanJitDebug(NanJit* self) {
+  NanJitRun_RAW(self, true);
 }
 
 
