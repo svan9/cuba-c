@@ -43,6 +43,7 @@ char *trim(char *s) {
 }
 #endif
 
+#define NAN_WARN_CODE(message) WENAN_WARN_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 #define NAN_PANIC_CODE(message) WENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 #define ANAN_PANIC_CODE(message) AENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 
@@ -77,6 +78,15 @@ void WENAN_PANIC_CODE(int line, const char* path, const char* func, const char* 
   printf("\n\t%s", _line);
   printf("\n\t^");
   exit(1);
+}
+
+void WENAN_WARN_CODE(int line, const char* path, const char* func, const char* message) {
+  char* _line;
+  _line = trim(READ_LINE_FROM_FILE(line, path));
+
+  printf("warn in function `%s()` at %s:%i (%s)", func, path, line, message);
+  printf("\n\t%s", _line);
+  printf("\n\t^");
 }
 
 void AENAN_PANIC_CODE(int line, const char* path, const char* func, const char* message) {
@@ -234,6 +244,9 @@ bool NanStringMatch(NanString* left, NanString* right) {
     if (left->content[i] != right->content[i]) { return false; }
   }
   return true;
+}
+static bool NanStringIsNull(NanString* cl) {
+  return cl->size == 0 && cl->content == NULL;
 }
 
 static NanString NanStringNull = {.size = 0, .content = NULL};
@@ -1220,6 +1233,7 @@ static void NanJitExtPutChar(NanStringBuilder* builder, char c) {
 }
 
 static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
+#ifdef  __linux__
   for (int i = 0; i < strlen(text); i++) {
     uint32_t __char = (uint32_t)text[i];
     NanStringBuilderPushS(builder, "\x68");
@@ -1230,6 +1244,9 @@ static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
     NanStringBuilderPushStr(builder,  "\x48\xc7\xc2\x01\x00\x00\x00"  , 7); // mov	rdx, 1
     NanStringBuilderPushStr(builder,  "\x0f\x05"                      , 2); // syscall
   }
+#elif _WIN32
+  NAN_WARN_CODE("win in dev");
+#endif
 }
 
 void NanJitRun(NanJit* self) {  
@@ -1238,7 +1255,7 @@ void NanJitRun(NanJit* self) {
     NanJitToken* tk = NanDynamicArrayAt(&self->tokens, i);
     switch (tk->kind) {
       case NA_PRINT: {
-        if (NanStringMatch(&tk->content, &NanStringNull)) {
+        if (NanStringIsNull(&tk->content)) {
           NAN_PANIC_CODE("NA_PRINT must have `.content`");
         } 
         NanJitExtPutString(&builder, tk->content.content);
