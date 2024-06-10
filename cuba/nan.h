@@ -1236,6 +1236,9 @@ static void NanJitOutputChar(NanStringBuilder* builder) {
 
 static void NanJitEOP(NanStringBuilder* builder) {
   NanStringBuilderPushS(builder, "\xC3"); // ret
+  NanStringBuilderPushS(builder, "\xC9"); // leave
+  NanStringBuilderPushS(builder, "\x48\xC7\xC0\x3C\x00\x00\x00" ); // mov rax, 60
+  NanStringBuilderPushS(builder, "\x0f\x05" ); // syscall
 }
 
 static void NanJitExtPutChar(NanStringBuilder* builder, char c) {
