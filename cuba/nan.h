@@ -45,7 +45,7 @@ char *trim(char *s) {
 
 #define NAN_WARN_CODE(message) WENAN_WARN_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 #define NAN_PANIC_CODE(message) WENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
-#define ANAN_PANIC_CODE(message) AENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
+#define SNAN_PANIC_CODE(message) AENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 
 char* READ_LINE_FROM_FILE(int line, const char* file) {
   const int MAX_LINE_LENGTH = 1000;
