@@ -125,11 +125,13 @@ void NanDynamicArrayPush(NanDynamicArray* self, void* element) {
     NanDynamicArrayRealloc(self, _new_size);
   }
   memcpy(self->begin+(self->size*self->T_size), element, sizeof(element));
+  self->size++;
 }
 
 void NanDynamicArrayDelete(NanDynamicArray* self, size_t index) {
   if (index > self->size) { NAN_PANIC_CODE("index out of size"); }
   memcpy(self->begin+index, self->begin+index+self->T_size, self->size-(index+1));
+  self->size--;
 }
 
 void* NanDynamicArrayEnd(NanDynamicArray* self) {
@@ -1229,7 +1231,6 @@ static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
     NanStringBuilderPushStr(builder,  "\x0f\x05"                      , 2); // syscall
   }
 }
-
 
 void NanJitRun(NanJit* self) {  
 	NanStringBuilder builder = NanStringBuilderCreate(5);
