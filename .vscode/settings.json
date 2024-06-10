@@ -8,7 +8,8 @@
 		"stdio.h": "c",
 		"types.h": "c",
 		"nan.h": "c",
-		"dictionary.h": "c"
+		"dictionary.h": "c",
+		"_mingw.h": "c"
 	},
 	"C_Cpp.dimInactiveRegions": false
 }

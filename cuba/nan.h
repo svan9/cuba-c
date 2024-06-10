@@ -386,6 +386,12 @@ NanString NanStringBuilderFinalize(NanStringBuilder* self) {
  * mman-win32
  */
 
+#ifdef __linux__
+
+#include <sys/mman.h>
+
+#elif __WIN32
+
 #ifndef _SYS_MMAN_H_
 #define _SYS_MMAN_H_
 
@@ -617,6 +623,7 @@ int munlock(const void *addr, size_t len)
 
 #pragma endregion MMAN
 
+#endif
 
 typedef void(*NanExecFuncMemoried)(void* memory);
 typedef void(*NanExecFunc)(void);
