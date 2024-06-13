@@ -8,8 +8,10 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <io.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 
 #define GETCODELINE() __LINE__
 #define GETCODEFILE() __FILE__
@@ -43,9 +45,37 @@ char *trim(char *s) {
 }
 #endif
 
+wchar_t* CharsToWChars(char* c) {
+	size_t size = strlen(c)+1;
+	wchar_t* wc = malloc(sizeof(wchar_t)*size);
+	mbstowcs(wc, c, size);
+	return wc;
+}
+
+char* string_format(char *fmt, ...) {
+  size_t size = strlen(fmt);
+  va_list list;
+  va_start(list, fmt);
+  for (
+    char* next = va_arg(list, char*);
+    next != NULL;
+    next = va_arg(list, char*)
+  ) {
+    size += strlen(next);
+  }
+  char* buffer = malloc(size);
+  vsnprintf(buffer, size, fmt, list);
+  va_end(list);
+  return buffer;
+}
+
+
 #define NAN_WARN_CODE(message) WENAN_WARN_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 #define NAN_PANIC_CODE(message) WENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
 #define SNAN_PANIC_CODE(message) AENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , message)
+#define NAN_PANIC_CODEF(...) \
+  WENAN_PANIC_CODE(GETCODELINE(), GETCODEFILE(), __func__ , string_format(__VA_ARGS__))
+
 
 char* READ_LINE_FROM_FILE(int line, const char* file) {
   const int MAX_LINE_LENGTH = 1000;
@@ -154,6 +184,36 @@ void* NanDynamicArrayAt(NanDynamicArray* self, size_t index) {
   }
   return self->begin+(index*self->T_size);
 }
+void* NanDynamicArrayAt_s(NanDynamicArray* self, size_t index) {
+  if (index >= self->size || index < 0) {
+    return NULL;
+  }
+  return self->begin+(index*self->T_size);
+}
+
+bool NanDynamicArrayHasCMP(NanDynamicArray* self, void* element, size_t size) {
+  for (int i = 0; i < self->size; i++) {
+    void* __element = NanDynamicArrayAt_s(self, i);
+    if (__element == element || memcmp(__element, element, size) == 0) { return true; }
+  }
+  return false;
+}
+
+void* NanDynamicArrayFindCMP(NanDynamicArray* self, void* element, size_t size) {
+  for (int i = 0; i < self->size; i++) {
+    void* __element = NanDynamicArrayAt_s(self, i);
+    if (__element == element || memcmp(__element, element, size) == 0) { return __element; }
+  }
+  return NULL;
+}
+
+bool NanDynamicArrayHas(NanDynamicArray* self, void* element) {
+  for (int i = 0; i < self->size; i++) {
+    void* __element = NanDynamicArrayAt_s(self, i);
+    if (__element == element) { return true; }
+  }
+  return false;
+}
 
 typedef struct {
   void* next;
@@ -238,6 +298,16 @@ typedef struct {
   char* content;
 } NanString;
 
+NanString NanStringCopy(NanString* root) {
+  NanString self = {
+    .content = NULL,
+    .size = root->size
+  };
+  self.content = malloc(self.size);
+  memcpy(self.content, root->content, root->size);
+  return self;  
+}
+
 bool NanStringMatch(NanString* left, NanString* right) {
   if (left->size != right->size) {return false;}
   for (int i = 0; i < left->size; i++) {
@@ -245,11 +315,14 @@ bool NanStringMatch(NanString* left, NanString* right) {
   }
   return true;
 }
+
+static NanString NanStringNull = {.size = 0, .content = NULL};
+
 static bool NanStringIsNull(NanString* cl) {
   return cl->size == 0 && cl->content == NULL;
 }
 
-static NanString NanStringNull = {.size = 0, .content = NULL};
+
 
 NanString NanStringFromChar(char c) {
   NanString str = {
@@ -268,6 +341,39 @@ NanString NanStringFromStr(char* s) {
   str.content = malloc(str.size);
   if (str.content == NULL) { SNAN_PANIC_CODE("can't allocate memory"); }
   memcpy(str.content, s, str.size);
+  return str;
+}
+NanString NanStringFromStrs(char* s, ...) {
+  size_t size = 0;
+  va_list list;
+  va_start(list, s);
+  for (
+    char* next = va_arg(list, char*);
+    next != NULL;
+    next = va_arg(list, char*)
+  ) {
+    size+=strlen(next);
+  }
+  va_end(list);
+  NanString str = {
+    .size = size,
+    .content = NULL
+  };
+  str.content = malloc(str.size);
+  if (str.content == NULL) { SNAN_PANIC_CODE("can't allocate memory"); }
+  size = strlen(s);
+  memcpy(str.content+size, s, size);
+  va_start(list, s);
+  for (
+    char* next = va_arg(list, char*);
+    next != NULL;
+    next = va_arg(list, char*)
+  ) {
+    size_t len = strlen(next);
+    memcpy(str.content+size, next, len);
+    size += len;
+  }
+  va_end(list);
   return str;
 }
 NanString NanStringFromS(char* s, size_t size) {
@@ -336,6 +442,18 @@ NanStringBuilder NanStringBuilderCreate(size_t alignment) {
 
   return self;
 }
+NanStringBuilder NanStringBuilderFromStr(char* str, size_t size) {
+  NanStringBuilder self = {
+    .alignment = 10,
+    .capacity = 10,
+    .size = size,
+    .begin = 0
+  };
+  self.begin = malloc(10*size);
+  if (self.begin == NULL) { SNAN_PANIC_CODE("can't allocate"); }
+  memcpy(self.begin, str, size);
+  return self;
+}
 
 void NanStringBuilderPrintX(NanStringBuilder* self) {
   printf("{");
@@ -348,7 +466,6 @@ void NanStringBuilderPrintX(NanStringBuilder* self) {
     }
   }
   printf("}");
-
 }
 
 void NanStringBuilderRealloc(NanStringBuilder* self, size_t newSize) {
@@ -410,6 +527,66 @@ NanString NanStringBuilderFinalize(NanStringBuilder* self) {
   memcpy(str.content, self->begin, self->size);
   return str;
 }
+
+#pragma region NAN_FILE
+
+NanString readfile(const char* path) {
+	// init file
+	FILE* ptr;
+	ptr = fopen(path, "rb"); 
+	if (ptr == NULL) { NAN_PANIC_CODE("FILE ERROR"); }
+	// get size of file
+	long file_size;
+	fseek(ptr, 0L, SEEK_END);
+	file_size = ftell(ptr);
+	fseek(ptr, 0L, SEEK_SET);
+	// init buffer
+	char* buffer = malloc(file_size);
+	// read file
+	fread(buffer, sizeof(char), file_size, ptr);
+	// close file
+	fclose(ptr);
+	// get string from string builder
+	NanString str = NanStringFromStr(buffer);
+  // free
+	free(buffer); free(ptr);
+	return str;
+}
+
+NanString NanReadFile(NanString* path) {
+	// init builder
+	NanStringBuilder builder = NanStringBuilderCreate(100);
+	// init file
+	FILE* ptr;
+	ptr = fopen(NanStringC_Str(path), "rb"); 
+	if (ptr == NULL) { NAN_PANIC_CODE("FILE ERROR"); }
+	// get size of file
+	long file_size;
+	fseek(ptr, 0L, SEEK_END);
+	file_size = ftell(ptr);
+	fseek(ptr, 0L, SEEK_SET);
+	// init buffer
+	char* buffer = malloc(file_size);
+	// read file
+	fread(buffer, sizeof(char), file_size, ptr);
+	// close file
+	fclose(ptr);
+	// get string from string builder
+	NanString str = NanStringFromStr(buffer);
+  // free
+	free(buffer); free(ptr);
+	return str;
+}
+
+
+bool isFilePath(const char* path) {
+	return access(path, F_OK);
+}
+bool NanIsFilePath(NanString* str) {
+	return access(NanStringC_Str(str), F_OK);
+}
+
+#pragma endregion NAN_FILE
 
 #pragma region MMAN
 
@@ -659,6 +836,7 @@ int munlock(const void *addr, size_t len)
 
 typedef void(*NanExecFuncMemoried)(void* memory);
 typedef void(*NanExecFunc)(void);
+typedef void(__stdcall *NanFarFunc)(void);
 
 #define MEMORY_CAP (10*1000*1000)
 
@@ -686,8 +864,6 @@ NanExec NanStringBuilderToExec(NanStringBuilder* builder) {
   exec.memory = NanStringBuilderToExecGetMemory();
   return exec;
 }
-
-
 
 typedef struct {
   size_t cursor;
@@ -784,9 +960,79 @@ bool isCharInString(char* content, char c) {
   return false;
 }
 
+#pragma region NAN_DLL
+typedef HINSTANCE NanHinstance;
+
+typedef struct { 
+	NanString name;
+	NanFarFunc raw_func;
+} NanDllFunc;
+
+typedef struct {
+	NanHinstance lib;
+	NanString name;
+	NanDynamicArray loadedfuncs;
+} NanDll;
+
+#define NanGetFuncFromDll(type, dll, name) ((type)NanGetFuncFromDll_raw(dll, name))
+#define NanLoadFuncFromDll(dll, name) NanGetFuncFromDll_raw(dll, name)
+#define NanDefFunc(type, name, right) type name = right
+#define NanDefFuncDLL(type, dll, name) NanDefFunc(type, __##name, NanGetFuncFromDll(type, dll, #name))
+#define NanDedFuncDLLStr(type, dll, name) NanDefFunc(type, __##name, NanGetFuncFromDll(type, dll, #name))
+
+NanFarFunc NanGetFuncFromDll_raw(NanDll* dll, char* name) {
+	if (dll->lib == NULL) { NAN_PANIC_CODE("dll not loaded"); }
+	NanFarFunc _raw_func = (NanFarFunc)GetProcAddress(dll->lib, (LPCSTR)name);
+	if (_raw_func == 0) { NAN_PANIC_CODEF("cannot loads func: `%s`", name); }
+  NanDllFunc* func = NULL;
+  NanString __name = NanStringFromStr(name);
+
+  NanDllFunc* __temp;
+  for (int i = 0; i < dll->loadedfuncs.size; i++) {
+    func = NanDynamicArrayAt_s(&dll->loadedfuncs, i);
+    if (NanStringMatch(&__temp->name, &__name)) { 
+      return func->raw_func;
+    }
+  }
+
+  if (func == NULL) {
+    func = malloc(sizeof(NanDllFunc));
+    func->name = __name;
+    func->raw_func = _raw_func;
+  }
+  
+	NanDynamicArrayPush(&dll->loadedfuncs, func);
+  
+	return _raw_func;
+}
+
+NanDll NanDllCreate() {
+	NanDll dll = {
+		.lib = NULL,
+		.name = NanStringNull,
+		.loadedfuncs = NanDynamicArrayCreate(sizeof(NanDllFunc))
+	};
+	return dll;
+}
+
+NanDll NanLoadDll(char* name) {
+	NanDll dll = NanDllCreate();
+	LPSTR __name = name;
+	dll.lib = LoadLibrary(__name);
+	if (dll.lib == NULL) { NAN_PANIC_CODE("dll not loaded"); }
+	return dll;
+}
+
+void NanDllDestroy(NanDll* dll) {
+  FreeLibrary(dll->lib);
+}
+
+#pragma endregion NAN_DLL
+
+#pragma region NAN_ARGS
 typedef struct {
   NanString flag;
-  NanString name;
+  size_t value_i;
 } NanArgument;
 
 typedef struct {
@@ -794,17 +1040,81 @@ typedef struct {
   NanDynamicArray content;
 } NanArgumentRow;
 
-NanArgumentRow nanParseArguments(int argc, char** argv) {
+/// flag without `-` or `--`
+bool NanArgumentIsInRow(NanArgumentRow* row, char* flag) {
+  NanString _flag_short = NanStringFromStrs("-", flag);
+  NanString _flag_long  = NanStringFromStrs("--", flag);
+
+  for (int i = 0; i < row->_with_flags.size; i++) {
+    NanArgument* arg = NanDynamicArrayAt(&row->_with_flags, i);
+    if (
+      NanStringMatch(&arg->flag, &_flag_short) ||
+      NanStringMatch(&arg->flag, &_flag_long)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/// flag with `-` or `--`
+bool NanArgumentIsInRowAbs(NanArgumentRow* row, char* flag) {
+  NanString _flag = NanStringFromStr(flag);
+  for (int i = 0; i < row->_with_flags.size; i++) {
+    NanArgument* arg = NanDynamicArrayAt(&row->_with_flags, i);
+    if (NanStringMatch(&arg->flag, &_flag)) { return true; }
+  }
+  return false;
+}
+
+NanString* NanArgumentRowGet(NanArgumentRow* row, size_t index) {
+  void* arg = NanDynamicArrayAt_s(&row->content, index);
+  if (arg == NULL) { return &NanStringNull; }
+  return arg;
+}
+
+NanString* NanArgumentRowFindPathOne(NanArgumentRow* row) {
+  for (int i = 0; i < row->content.size; i++) { 
+    NanString* arg = NanDynamicArrayAt(&row->content, i);
+    if (NanIsFilePath(arg)) { return arg; }
+  }
+  return &NanStringNull;
+}
+
+NanArgumentRow NanParseArguments(int argc, char** argv) {
   NanDynamicArray _wflags = NanDynamicArrayCreate(sizeof(NanArgument));
   NanDynamicArray _args = NanDynamicArrayCreate(sizeof(NanString));
   size_t cursor = 0;
   while (cursor < argc) {
     NanString arg = NanStringFromStr(argv[cursor++]);
-    if (NanStringStartWith(&arg, "-")) {
-      // NanStringCutLeft(arg, )
+    if (
+      NanStringStartWith(&arg, "-") ||
+      NanStringStartWith(&arg, "--")
+    ) {
+      NanArgument* __arg = malloc(sizeof(NanArgument));
+      __arg->flag = arg;
+      if (cursor+1 < argc) {
+        __arg->value_i = _args.size;
+      } else {
+        __arg->value_i = (size_t)-1;
+      }
+      NanDynamicArrayPush(&_wflags, __arg);
+    }
+    else {
+      NanDynamicArrayPush(&_args, &arg);
     }
   }
+  NanArgumentRow ar = {
+    .content = _args,
+    ._with_flags = _wflags
+  };
+  return ar;
 }
+
+#pragma endregion NAN_ARGS
+
+
+
 
 typedef struct {
   NanString content;
@@ -846,7 +1156,7 @@ typedef struct {
 } NanDescryptor;
 
 
-NanDescryptor NanDescryptorCreate(NanLexer lexer, ubyte textTokenType) {
+NanDescryptor NanDescryptorCreate() {
   NanDescryptor descr = {
     .word_gap = (ubyte)(8),
     .nextbyte = (ubyte)(1),
@@ -856,35 +1166,52 @@ NanDescryptor NanDescryptorCreate(NanLexer lexer, ubyte textTokenType) {
     .nextstring = (ubyte)(0),
     .content = (NanString){0}
   };
+  return descr;
+}
+
+NanDescryptor NanDescryptorFromString(NanString* str) {
+  NanDescryptor descr = {
+    .word_gap = (ubyte)(8),
+    .nextbyte = (ubyte)(1),
+    .emptybyte = (ubyte)(2),
+    .start = (ubyte)(3),
+    .end = (ubyte)(4),
+    .nextstring = (ubyte)(0),
+    .content = NanStringCopy(str)
+  };
+  return descr;
+}
+
+void NanDescryptorFront(NanDescryptor* descr, NanLexer lexer, ubyte textTokenType) {
   NanStringBuilder builder = NanStringBuilderCreate(5);
   NanLexerUnit* unit;
   do {
     unit = NanLexerNext(&lexer);
-    NanStringBuilderPushB(&builder, descr.nextbyte);
-    ubyte final_token_type = unit->type+descr.word_gap;
+    NanStringBuilderPushB(&builder, descr->nextbyte);
+    ubyte final_token_type = unit->type+descr->word_gap;
     if (final_token_type >= ffbyte) {
-      NanStringBuilderPushB(&builder, descr.nextbyte);
+      NanStringBuilderPushB(&builder, descr->nextbyte);
     }
-    final_token_type = (ffbyte - unit->type)+descr.word_gap;
+    final_token_type = (ffbyte - unit->type)+descr->word_gap;
     if (final_token_type == 0) {
-      final_token_type = descr.emptybyte;
+      final_token_type = descr->emptybyte;
     }
     NanStringBuilderPushB(&builder, final_token_type);
 
-    NanStringBuilderPushB(&builder, descr.nextstring);
+    NanStringBuilderPushB(&builder, descr->nextstring);
     if (unit->type == textTokenType) {
       int length = unit->content.size;
       while (length >= ffbyte) {
         length -= ffbyte;
-        NanStringBuilderPushB(&builder, descr.nextbyte);
+        NanStringBuilderPushB(&builder, descr->nextbyte);
       }
       if (length == 0) {
-        NanStringBuilderPushB(&builder, descr.emptybyte);
+        NanStringBuilderPushB(&builder, descr->emptybyte);
       }
       else if (length < 0) {
         length += ffbyte;
       }
-      NanStringBuilderPushB(&builder, descr.emptybyte);
+      NanStringBuilderPushB(&builder, descr->emptybyte);
       NanStringIterator it = NanStringIteratorFromString(&unit->content);
       while (!it.is_end) {
         NanStringBuilderPushB(&builder, NanStringIteratorNext(&it));
@@ -893,8 +1220,7 @@ NanDescryptor NanDescryptorCreate(NanLexer lexer, ubyte textTokenType) {
 
   } while (unit != NULL);
 
-  descr.content = NanStringBuilderFinalize(&builder);
-  return descr;
+  descr->content = NanStringBuilderFinalize(&builder);
 }
 
 NanLexer NanDescryptorBack(NanDescryptor* self) {
@@ -929,7 +1255,7 @@ NanLexer NanDescryptorBack(NanDescryptor* self) {
       }
       size_t size = counter;
       NanStringBuilder builder = NanStringBuilderCreate(5);
-      for (int i=0; i < size; i++) {
+      for (int i = 0; i < size; i++) {
         c = NanStringIteratorNext(&it);
         NanStringBuilderPushB(&builder, c);
       }
@@ -1235,13 +1561,21 @@ static void NanJitOutputChar(NanStringBuilder* builder) {
 }
 
 static void NanJitEOP(NanStringBuilder* builder) {
+#ifdef  __linux__
   // NanStringBuilderPushS(builder, "\xC3"); // ret
   // NanStringBuilderPushS(builder, "\xC9"); // leave
   NanStringBuilderPushS(builder, "\x48\xC7\xC0\x3C\x00\x00\x00" ); // mov rax, 60
   NanStringBuilderPushS(builder, "\x0f\x05" ); // syscall
+#elif _WIN32
+  NAN_WARN_CODE("win in dev");
+  NanStringBuilderPushS(builder, "\x48\xC7\xC0\x00\x00\x00\x00" ); // mov rax, 60
+  NanStringBuilderPushS(builder, "\x0f\x05" ); // syscall
+  NanStringBuilderPushS(builder, "\xC3"); // ret
+#endif
 }
 
 static void NanJitExtPutChar(NanStringBuilder* builder, char c) {
+  
   NanStringBuilderPushS(builder, "\x6a"); // push ...
   NanStringBuilderPushC(builder, c);
   NanStringBuilderPushS(builder,
@@ -1282,7 +1616,7 @@ void NanJitRun_RAW(NanJit* self, bool is_debug) {
         if (NanStringIsNull(&tk->content)) {
           NAN_PANIC_CODE("NA_PRINT must have `.content`");
         }
-        NanJitExtPutString(&builder, tk->content.content);
+        NanJitExtPutString(&builder, NanStringC_Str(&tk->content));
       } break;
     };
   }
@@ -1299,6 +1633,27 @@ static void NanJitDebug(NanJit* self) {
   NanJitRun_RAW(self, true);
 }
 
+static const ubyte NanLexerTEXT  = 2;
+static const ubyte NanLexerWRITE = 3;
+static const ubyte NanLexerINPUT = 4;
+
+void NanJitLex(NanJit* self, NanLexer* lexer) {
+  NanLexerUnit* unit; 
+  while ((unit = NanLexerNext(lexer)) != NULL) {
+    if (unit->type == NanLexerWRITE) {
+      if ((unit = NanLexerNext(lexer)) == NULL || unit->type != NanLexerTEXT) {
+        NAN_PANIC_CODE("after write operation must be a string");
+      }
+      NanJitAppendNS(self, NA_PRINT, unit->content);
+    }
+  }
+}
+
+static const char* NanCharConsoleClear = "\033[00m";
+static const char* NanCharConsoleCyanFG = "\033[96m";
+static const char* NanCharConsoleGrayFG = "\033[02m";
+
+#define NanConsoleRC(a) a, NanCharConsoleClear
 
 #ifdef __cplusplus
 }
