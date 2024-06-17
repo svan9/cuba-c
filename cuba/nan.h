@@ -8,7 +8,22 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include <io.h>
+#ifdef _WIN32
+  #include <io.h>
+#elif __linux__
+  #include <inttypes.h>
+  #include <unistd.h>
+  #define __int64 int64_t
+  #define _close close
+  #define _read read
+  #define _lseek64 lseek64
+  #define _O_RDONLY O_RDONLY
+  #define _open open
+  #define _lseeki64 lseek64
+  #define _lseek lseek
+  #define stricmp strcasecmp
+#endif
+
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdarg.h>
@@ -465,7 +480,7 @@ void NanStringBuilderPrintX(NanStringBuilder* self) {
       printf("\\x%x", n);
     }
   }
-  printf("}");
+  printf("}\n");
 }
 
 void NanStringBuilderRealloc(NanStringBuilder* self, size_t newSize) {
@@ -1004,6 +1019,12 @@ NanFarFunc NanGetFuncFromDll_raw(NanDll* dll, char* name) {
 	NanDynamicArrayPush(&dll->loadedfuncs, func);
   
 	return _raw_func;
+}
+
+uint32_t NanGetFuncAdressFromDll(NanDll* dll, char* name) {
+	if (dll->lib == NULL) { NAN_PANIC_CODE("dll not loaded"); }
+	uint32_t adress = (uint32_t)GetProcAddress(dll->lib, (LPCSTR)name);
+	return adress;
 }
 
 NanDll NanDllCreate() {
@@ -1557,58 +1578,52 @@ static void NanJitOutputChar(NanStringBuilder* builder) {
     "\xb8\x04\x00\x00\x00" 	        // mov  eax, 0x4
     "\x0f\x05" 	                    // syscall
   );
-#endif 
+#endif
 }
 
 static void NanJitEOP(NanStringBuilder* builder) {
 #ifdef  __linux__
-  // NanStringBuilderPushS(builder, "\xC3"); // ret
-  // NanStringBuilderPushS(builder, "\xC9"); // leave
   NanStringBuilderPushS(builder, "\x48\xC7\xC0\x3C\x00\x00\x00" ); // mov rax, 60
+  NanStringBuilderPushS(builder, "\x48\xC7\xC7\x00\x00\x00\x00" ); // mov rdi, 0
   NanStringBuilderPushS(builder, "\x0f\x05" ); // syscall
 #elif _WIN32
-  NAN_WARN_CODE("win in dev");
-  NanStringBuilderPushS(builder, "\x48\xC7\xC0\x00\x00\x00\x00" ); // mov rax, 60
-  NanStringBuilderPushS(builder, "\x0f\x05" ); // syscall
+  // NAN_WARN_CODE("win in dev");
+  NanStringBuilderPushStr(builder, "\x48\xC7\xC0\x00\x00\x00\x00",  7); // mov rax, 0
   NanStringBuilderPushS(builder, "\xC3"); // ret
 #endif
 }
 
-static void NanJitExtPutChar(NanStringBuilder* builder, char c) {
-  
-  NanStringBuilderPushS(builder, "\x6a"); // push ...
-  NanStringBuilderPushC(builder, c);
-  NanStringBuilderPushS(builder,
-    "\x48\xC7\xC0\x01\x00\x00\x00"  // mov	rax, 1
-    "\x48\x89\xE6"                  // mov	rsp, rsp
-    "\x48\xc7\xc7\x01\x00\x00\x00"  // mov	rdi, 1 ; stdout
-    "\x48\xc7\xc2\x01\x00\x00\x00"  // mov	rdx, 1
-    "\x0f\x05" 	                    // syscall
-  );
-}
 
-static void NanJitExtPutString(NanStringBuilder* builder, char* text) {
 #ifdef  __linux__
-  for (int i = 0; i < strlen(text); i++) {
-    uint32_t __char = (uint32_t)text[i];
-    NanStringBuilderPushS(builder, "\x68");
-    NanStringBuilderPushMany(builder, &__char, sizeof(__char));
-    NanStringBuilderPushStr(builder,  "\x48\xC7\xC0\x01\x00\x00\x00"  , 7); // mov	rax, 1
-    NanStringBuilderPushStr(builder,  "\x48\x89\xE6"                  , 3); // mov	rsp, rsp
-    NanStringBuilderPushStr(builder,  "\x48\xc7\xc7\x01\x00\x00\x00"  , 7); // mov	rdi, 1 ; stdout
-    NanStringBuilderPushStr(builder,  "\x48\xc7\xc2\x01\x00\x00\x00"  , 7); // mov	rdx, 1
-    NanStringBuilderPushStr(builder,  "\x0f\x05"                      , 2); // syscall
+#define NanJitExtPutString(builder, text) \
+  for (int i = 0; i < strlen(text); i++) {\
+    uint32_t __char = (uint32_t)text[i];\
+    NanStringBuilderPushS(builder, "\x68");\
+    NanStringBuilderPushMany(builder, &__char, sizeof(__char));\
+    NanStringBuilderPushStr(builder,  "\x48\xC7\xC0\x01\x00\x00\x00"  , 7);\
+    NanStringBuilderPushStr(builder,  "\x48\x89\xE6"                  , 3);\
+    NanStringBuilderPushStr(builder,  "\x48\xc7\xc7\x01\x00\x00\x00"  , 7);\
+    NanStringBuilderPushStr(builder,  "\x48\xc7\xc2\x01\x00\x00\x00"  , 7);\
+    NanStringBuilderPushStr(builder,  "\x0f\x05"                      , 2);\
   }
 #elif _WIN32
-  NAN_WARN_CODE("win in dev");
-  printf("\npreudo: %s", text);
+#define NanJitExtPutString(builder, text)\
+  for (int i = 0; i < strlen(text); i++) {\
+    uint32_t __char = (uint32_t)text[i];\
+    NanStringBuilderPushStr(builder,  "\x48\xC7\xC1"  , 3);\
+    NanStringBuilderPushMany(builder, &__char, sizeof(__char));\
+    NanStringBuilderPushStr(builder,  "\xFF\x14\x25"  , 3);\
+    NanStringBuilderPushMany(builder, &adress_putchar, sizeof(adress_putchar));\
+  }
 #endif
-}
+
 
 #define NAN_DEBUG if(is_debug) 
 
 void NanJitRun_RAW(NanJit* self, bool is_debug) {  
-	NanStringBuilder builder = NanStringBuilderCreate(5);
+  NanStringBuilder builder = NanStringBuilderCreate(5);
+  NanDll msvcrt_dll = NanLoadDll("msvcrt.dll");\
+  uint32_t adress_putchar = NanGetFuncAdressFromDll(&msvcrt_dll, "putchar");
   for (int i = 0; i < self->tokens.size; i++) {
     NanJitToken* tk = NanDynamicArrayAt(&self->tokens, i);
     switch (tk->kind) {

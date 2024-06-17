@@ -2,8 +2,7 @@
 
 int main(int argc, char** argv) {
   NanArgumentRow args = NanParseArguments(argc, argv);
-
-
+#if 0
   if (NanArgumentIsInRowAbs(&args, "--help")) {
     printf("  JIT-HELP\n");
     printf("  USAGE:\n");
@@ -18,10 +17,12 @@ int main(int argc, char** argv) {
   NanString finner = NanReadFile(path);
   NanDescryptor fdescr = NanDescryptorFromString(&finner);
   NanLexer lexer = NanDescryptorBack(&fdescr);
-  
+#endif
+
   NanJit jit = NanJitCreate();
-  NanJitLex(&jit, &lexer);
-  NanJitRun(&jit);
+  NanJitAppendNS(&jit, NA_PRINT, NanStringFromStr("hellow, word\n"));
+  // NanJitLex(&jit, &lexer);
+  NanJitDebug(&jit);
   // NanJitDebug(&jit);
   return 0;
 }
