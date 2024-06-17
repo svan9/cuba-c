@@ -1622,8 +1622,10 @@ static void NanJitEOP(NanStringBuilder* builder) {
 
 void NanJitRun_RAW(NanJit* self, bool is_debug) {  
   NanStringBuilder builder = NanStringBuilderCreate(5);
+#if _WIN32
   NanDll msvcrt_dll = NanLoadDll("msvcrt.dll");\
   uint32_t adress_putchar = NanGetFuncAdressFromDll(&msvcrt_dll, "putchar");
+#endif
   for (int i = 0; i < self->tokens.size; i++) {
     NanJitToken* tk = NanDynamicArrayAt(&self->tokens, i);
     switch (tk->kind) {
