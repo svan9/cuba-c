@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
   NanJit jit = NanJitCreate();
   NanJitAppendNS(&jit, NA_PRINT, NanStringFromStr("hellow, word\n"));
   // NanJitLex(&jit, &lexer);
-  NanJitDebug(&jit);
   // NanJitDebug(&jit);
+  NanJitRun(&jit);
   return 0;
 }

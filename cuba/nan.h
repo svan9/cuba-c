@@ -1609,6 +1609,7 @@ static void NanJitEOP(NanStringBuilder* builder) {
     NanStringBuilderPushStr(builder,  "\x48\x89\xE6"                  , 3);\
     NanStringBuilderPushStr(builder,  "\x48\xc7\xc7\x01\x00\x00\x00"  , 7);\
     NanStringBuilderPushStr(builder,  "\x48\xc7\xc2\x01\x00\x00\x00"  , 7);\
+    NanStringBuilderPushStr(builder,  "\x48\x83\xC4\x20"              , 4);\
     NanStringBuilderPushStr(builder,  "\x0f\x05"                      , 2);\
   }
 #elif _WIN32
