@@ -976,6 +976,7 @@ bool isCharInString(char* content, char c) {
 }
 
 #pragma region NAN_DLL
+#ifdef _WIN32
 typedef HINSTANCE NanHinstance;
 
 typedef struct { 
@@ -1047,7 +1048,7 @@ NanDll NanLoadDll(char* name) {
 void NanDllDestroy(NanDll* dll) {
   FreeLibrary(dll->lib);
 }
-
+#endif
 #pragma endregion NAN_DLL
 
 #pragma region NAN_ARGS
