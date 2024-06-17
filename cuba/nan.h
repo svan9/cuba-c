@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+#ifndef WIN32
+#define __stdcall
+#endif
+
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdio.h>
